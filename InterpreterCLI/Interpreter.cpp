@@ -9,11 +9,6 @@ CInterpreter::CInterpreter(std::string strProgram)
 	m_cursor = m_data.begin();
 }
 
-
-CInterpreter::~CInterpreter(void)
-{
-}
-
 bool CInterpreter::Interprete()
 {
 	assert( !m_strProgram.empty() );
