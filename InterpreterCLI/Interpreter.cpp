@@ -19,99 +19,81 @@ bool CInterpreter::Interprete()
 		switch( current )
 		{
 		case '>':
+			assert(m_cursor != m_data.end());
+			if( ++m_cursor == m_data.end() )
 			{
-				assert(m_cursor != m_data.end());
-				if( ++m_cursor == m_data.end() )
-				{
-					m_data.push_back(0);
-					m_cursor-- = m_data.end();
-				}
-				break;
+				m_data.push_back(0);
+				m_cursor-- = m_data.end();
 			}
+			break;
 		case '<':
+			if( m_cursor == m_data.begin() )
 			{
-				if( m_cursor == m_data.begin() )
-				{
-					// can't go left
-					assert(false);
-					printf("Error: unable to move left of current position.");
-					return false;
-				}
-				m_cursor--;
-				break;
+				// can't go left
+				assert(false);
+				printf("Error: unable to move left of current position.");
+				return false;
 			}
+			m_cursor--;
+			break;
 		case '+':
-			{
-				assert(m_cursor != m_data.end());
-				assert((*m_cursor) <= INT_MAX); // catch overflows
-				(*m_cursor)++;
-				break;
-			}
+			assert(m_cursor != m_data.end());
+			assert((*m_cursor) <= INT_MAX); // catch overflows
+			(*m_cursor)++;
+			break;
 		case '-':
-			{
-				assert(m_cursor != m_data.end());
-				assert((*m_cursor) >= INT_MIN); // catch overflows
-				(*m_cursor)--;
-				break;
-			}
+			assert(m_cursor != m_data.end());
+			assert((*m_cursor) >= INT_MIN); // catch overflows
+			(*m_cursor)--;
+			break;
 		case '.':
-			{
-				assert(m_cursor != m_data.end());
-				putchar(*m_cursor);
-				break;
-			}
+			assert(m_cursor != m_data.end());
+			putchar(*m_cursor);
+			break;
 		case ',':
-			{
-				assert(m_cursor != m_data.end());
-				*m_cursor = getchar();
-				break;
-			}
+			assert(m_cursor != m_data.end());
+			*m_cursor = getchar();
+			break;
 		case '[':
+			// if byte at data pointer is zero
+			if( (*m_cursor) > 0 )
 			{
-				// if byte at data pointer is zero
-				if( (*m_cursor) > 0 )
-				{
-					// push current iter on the stack to jump back to
-					m_loopStartStack.push(it);
-				}
-				else if( !m_loopEndStack.empty() )
-				{
-					it = m_loopEndStack.top(); // jump to after next ']'
-					// loop is done
-					m_loopEndStack.pop();
-					m_loopStartStack.pop(); 
-				}
-				else
+				// push current iter on the stack to jump back to
+				m_loopStartStack.push(it);
+			}
+			else if( !m_loopEndStack.empty() )
+			{
+				it = m_loopEndStack.top(); // jump to after next ']'
+				// loop is done
+				m_loopEndStack.pop();
+				m_loopStartStack.pop(); 
+			}
+			else
+			{
+				printf("Error: unmatched []");
+				return false;
+			}
+			break;
+		case ']':
+			// if byte at data pointer is nonzero
+			if( (*m_cursor) > 0 )
+			{
+				if( m_loopStartStack.empty() )
 				{
 					printf("Error: unmatched []");
 					return false;
 				}
 
-				break;
+				// jump back to guy on top of the stack;
+				it = m_loopStartStack.top(); // jump to after last ']'
+				// don't pop off the stack, the loop is running
 			}
-		case ']':
-			{
-				// if byte at data pointer is nonzero
-				if( (*m_cursor) > 0 )
-				{
-					if( m_loopStartStack.empty() )
-					{
-						printf("Error: unmatched []");
-						return false;
-					}
-
-					// jump back to guy on top of the stack;
-					it = m_loopStartStack.top(); // jump to after last ']'
-					// don't pop off the stack, the loop is running
-				}
-				break;
-			}
+			break;
 		default:
-			{
-				assert(false);
-				printf("Error: Unrecognized character");
-				return false;
-			}
+
+			assert(false);
+			printf("Error: Unrecognized character");
+			return false;
 		}
 
 	}
