@@ -90,14 +90,12 @@ bool CInterpreter::Interprete()
 			}
 			break;
 		default:
-
 			assert(false);
 			printf("Error: Unrecognized character");
 			return false;
 		}
 
 	}
-
 
 	if( !m_loopStartStack.empty() || !m_loopEndStack.empty() )
 	{
