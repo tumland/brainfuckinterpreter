@@ -9,6 +9,25 @@ CInterpreter::CInterpreter(std::string strProgram)
 	m_cursor = m_data.begin();
 }
 
+std::string::iterator findMatchingLoopEnd(std::string::iterator begin, std::string::iterator end)
+{
+	std::string::iterator it = begin;
+	it++; // get past the initial '['
+
+	int depth = 0;
+	for( ; it != end ; it++ )
+	{
+		if( *it == '[' )
+			depth++;
+		if( *it == ']' && depth == 0 )
+			return it;
+		if( *it == ']' && depth != 0 )
+			depth--;
+	}
+	// it = end
+	return it;
+}
+
 bool CInterpreter::Interprete()
 {
 	assert( !m_strProgram.empty() );
@@ -70,8 +89,14 @@ bool CInterpreter::Interprete()
 			}
 			else
 			{
-				printf("Error: unmatched []");
-				return false;
+				// someone wrote a loop with a 0 counter, i.e. while(false)
+				// seek to next '['
+				it = findMatchingLoopEnd(it,m_strProgram.end());
+				if( it == m_strProgram.end() )
+				{
+					// unmatched []
+					return false;
+				}
 			}
 			break;
 		case ']':
@@ -94,7 +119,6 @@ bool CInterpreter::Interprete()
 			printf("Error: Unrecognized character");
 			return false;
 		}
-
 	}
 
 	if( !m_loopStartStack.empty() || !m_loopEndStack.empty() )
