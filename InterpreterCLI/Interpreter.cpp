@@ -49,7 +49,6 @@ bool CInterpreter::Interprete()
 			if( m_cursor == m_data.begin() )
 			{
 				// can't go left
-				assert(false);
 				printf("Error: unable to move left of current position.");
 				return false;
 			}
@@ -59,6 +58,7 @@ bool CInterpreter::Interprete()
 			assert(m_cursor != m_data.end());
 			assert((*m_cursor) <= INT_MAX); // catch overflows
 			(*m_cursor)++;
+
 			break;
 		case '-':
 			assert(m_cursor != m_data.end());
