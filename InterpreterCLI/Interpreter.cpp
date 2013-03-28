@@ -1,132 +1,122 @@
 #include "stdafx.h"
 #include "Interpreter.h"
 #include <assert.h>
+#include <algorithm>
 
-CInterpreter::CInterpreter(std::string strProgram)
-	:m_strProgram(strProgram)
+using namespace std;
+
+bool CInterpreter::InterpreteChar(wchar_t c, list<int>& data, list<int>::iterator& cursor)
 {
-	m_data.push_back(0);
-	m_cursor = m_data.begin();
-}
-
-std::string::iterator findMatchingLoopEnd(std::string::iterator begin, std::string::iterator end)
-{
-	std::string::iterator it = begin;
-	it++; // get past the initial '['
-
-	int depth = 0;
-	for( ; it != end ; it++ )
+	switch( c )
 	{
-		if( *it == '[' )
-			depth++;
-		if( *it == ']' && depth == 0 )
-			return it;
-		if( *it == ']' && depth != 0 )
-			depth--;
-	}
-	// it = end
-	return it;
-}
-
-bool CInterpreter::Interprete()
-{
-	assert( !m_strProgram.empty() );
-
-	for(auto it = m_strProgram.begin(); it != m_strProgram.end(); it++ )
-	{
-		char current = *it;
-		switch( current )
+	case '>':
+		assert(cursor != data.end());
+		if( ++cursor == data.end() )
 		{
-		case '>':
-			assert(m_cursor != m_data.end());
-			if( ++m_cursor == m_data.end() )
-			{
-				m_data.push_back(0);
-				m_cursor-- = m_data.end();
-			}
-			break;
-		case '<':
-			if( m_cursor == m_data.begin() )
-			{
-				// can't go left
-				printf("Error: unable to move left of current position.");
-				return false;
-			}
-			m_cursor--;
-			break;
-		case '+':
-			assert(m_cursor != m_data.end());
-			assert((*m_cursor) <= INT_MAX); // catch overflows
-			(*m_cursor)++;
-
-			break;
-		case '-':
-			assert(m_cursor != m_data.end());
-			assert((*m_cursor) >= INT_MIN); // catch overflows
-			(*m_cursor)--;
-			break;
-		case '.':
-			assert(m_cursor != m_data.end());
-			putchar(*m_cursor);
-			break;
-		case ',':
-			assert(m_cursor != m_data.end());
-			*m_cursor = getchar();
-			break;
-		case '[':
-			// if byte at data pointer is zero
-			if( (*m_cursor) > 0 )
-			{
-				// push current iter on the stack to jump back to
-				m_loopStartStack.push(it);
-			}
-			else if( !m_loopEndStack.empty() )
-			{
-				it = m_loopEndStack.top(); // jump to after next ']'
-				// loop is done
-				m_loopEndStack.pop();
-				m_loopStartStack.pop(); 
-			}
-			else
-			{
-				// someone wrote a loop with a 0 counter, i.e. while(false)
-				// seek to next '['
-				it = findMatchingLoopEnd(it,m_strProgram.end());
-				if( it == m_strProgram.end() )
-				{
-					// unmatched []
-					return false;
-				}
-			}
-			break;
-		case ']':
-			// if byte at data pointer is nonzero
-			if( (*m_cursor) > 0 )
-			{
-				if( m_loopStartStack.empty() )
-				{
-					printf("Error: unmatched []");
-					return false;
-				}
-
-				// jump back to guy on top of the stack;
-				it = m_loopStartStack.top(); // jump to after last ']'
-				// don't pop off the stack, the loop is running
-			}
-			break;
-		default:
-			assert(false);
-			printf("Error: Unrecognized character");
+			data.push_back(0);
+			cursor-- = data.end();
+		}
+		break;
+	case '<':
+		if( cursor == data.begin() )
+		{
+			// can't go left
+			wprintf(L"Error: unable to move left of current position.\n");
 			return false;
 		}
-	}
+		cursor--;
+		break;
+	case '+':
+		assert(cursor != data.end());
+		assert((*cursor) <= INT_MAX); // catch overflows
+		(*cursor)++;
 
-	if( !m_loopStartStack.empty() || !m_loopEndStack.empty() )
-	{
-		// unmatched [] / brain fucked
+		break;
+	case '-':
+		assert(cursor != data.end());
+		assert((*cursor) >= INT_MIN); // catch overflows
+		(*cursor)--;
+		break;
+	case '.':
+		assert(cursor != data.end());
+		putchar(*cursor);
+		break;
+	case ',':
+		assert(cursor != data.end());
+		*cursor = getchar();
+		break;
+	default:
+		assert(false);
+		wprintf(L"Error: Unrecognized character. [] should be handled in InterpreteChunk\n");
 		return false;
 	}
-
 	return true;
 }
 
+wstring::iterator CInterpreter::seekToLoopClose(wstring::iterator begin, wstring::iterator end)
+{
+	size_t nDepth = 0;
+
+	for( auto it = begin; it != end; it++ )
+	{
+		if( *it == '[' )
+		{
+			// seek to closing ']'
+			nDepth++;
+		}
+		if( *it == ']' )
+		{
+			nDepth--;
+			if( nDepth == 0 )
+			{
+				return it;
+			}
+		}
+	}
+	return end;
+}
+
+bool CInterpreter::InterpreteChunk(wstring::iterator chunkBegin, wstring::iterator chunkEnd, list<int>& data, list<int>::iterator& cursor)
+{
+	// Validate loop chars
+	// Not the fastest way, but it's pretty
+	if( count(chunkBegin, chunkEnd, '[') !=
+		count(chunkBegin, chunkEnd, ']') )
+	{
+		return false;
+	}
+
+	for( auto it = chunkBegin; it != chunkEnd; it++ ) {
+		if( *it == '[' )
+		{
+			// seek to closing ']'
+			auto itEnd = seekToLoopClose(chunkBegin, chunkEnd);
+			++it;
+			// if cursor data is 0, this resembles a while(false)
+			while( *cursor > 0 )
+				// run to loop end
+				if( !InterpreteChunk(it, itEnd, data, cursor) )
+					return false;
+			it = itEnd;
+		}
+		else if( *it == ']' )
+		{
+			it++;
+		}
+		else
+		{
+			if( !InterpreteChar(*it, data, cursor) )
+				return false;
+		}
+	}
+	return true;
+}
+
+bool CInterpreter::Interprete(wstring strProgram)
+{
+	list<int> data;
+	data.push_back(0);
+	list<int>::iterator cursor = data.begin();
+
+	return InterpreteChunk(strProgram.begin(), strProgram.end(), data, cursor);
+}

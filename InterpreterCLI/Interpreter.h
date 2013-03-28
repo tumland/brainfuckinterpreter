@@ -1,25 +1,24 @@
 #pragma once
 #include <list>
-#include <stack>
 
-class CInterpreter
+
+class IInterpreter
 {
 public:
-	CInterpreter(std::string strProgram);
-	~CInterpreter(void);
+	virtual bool Interprete(std::wstring strProgram) = 0;
 
-	std::list<int> m_data;
+	typedef std::auto_ptr<IInterpreter> Ptr;
+};
 
-	// stack for storing loop start indices
-	std::stack<std::string::iterator> m_loopStartStack;
-	// stack for storing loop end indices
-	std::stack<std::string::iterator> m_loopEndStack;
 
-	std::list<int>::iterator m_cursor;
+class CInterpreter : IInterpreter
+{
+public:
+	bool Interprete(std::wstring strProgram);
+	bool InterpreteChunk(std::wstring::iterator chunkBegin, std::wstring::iterator chunkEnd, std::list<int>& data, std::list<int>::iterator& cursor);
+	bool InterpreteChar(wchar_t c, std::list<int>& data, std::list<int>::iterator& cursor);
 
-	bool Interprete();
-
-	std::string m_strProgram;
-
+private:
+	std::wstring::iterator seekToLoopClose(std::wstring::iterator begin, std::wstring::iterator end);
 };
 
